@@ -1,0 +1,34 @@
+name: pr comment
+
+on:
+  pull_request:
+    types: [opened]
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+jobs:  
+  add comment:
+    name: Add migration lists to description of pull request
+    runs-on: ubuntu-latest
+    outputs:
+      replaced_description1: ${{ steps.get_description.outputs.replaced_description }}
+    steps:  
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: Get current pull request description
+        id: get_description
+        run: |
+          DESCRIPTION=$(gh pr view ${{ github.event.pull_request.number }} --json body --jq .body)
+          REPLACED_DESCRIPTION=$(echo $DESCRIPTION | sed 's/\n/;;;:::;;;/g')
+          echo "replaced_description=$REPLACED_DESCRIPTION" >> $GITHUB_OUTPUT 
+
+      - name: URL to Pull Request description
+        if: contains(steps.get_description.outputs.replaced_description, '## Migration Lists') == false
+        run: |
+          DESCRIPTION=$(echo $REPLACED_DESCRIPTION | sed 's/;;;:::;;;/\n/g')
+          gh pr edit ${{ github.event.pull_request.number }} --body "$DESCRIPTION
+          ## test
+            add comment
+        env:
+          REPLACED_DESCRIPTION: ${{ steps.get_description.outputs.replaced_description }}
